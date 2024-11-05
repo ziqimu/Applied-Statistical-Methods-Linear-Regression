@@ -1,0 +1,296 @@
+---
+title: "Stat216 FINAL PROJECT"
+author: "Scarlett Qi, Ziqi Mu"
+output: pdf_document
+date: "2023-05-04"
+---
+
+```{r}
+Sleep_data <- read.csv("Sleep.csv")
+nrow(Sleep_data)
+
+sleep2 <- Sleep_data[!(Sleep_data$body_weight=="?" | Sleep_data$brain_weight=="?" | Sleep_data$max_life_span=="?" | Sleep_data$gestation_time=="?"| Sleep_data$predation_index=="?" | Sleep_data$sleep_exposure_index=="?"| Sleep_data$danger_index=="?" | Sleep_data$total_sleep=="?"),]
+nrow(sleep2)
+```
+Our original data contains 62 rows, after removing missing data rows, now we have 51 rows.
+```{r}
+sleep2$total_sleep <- as.numeric(sleep2$total_sleep)
+sleep2$sleep_exposure_index <- as.factor(sleep2$sleep_exposure_index)
+```
+# Abstract
+Sleep plays a vital role throughout mammals' life and maintains their good health. Our group wants to explore variables that influence mammals' total sleep time. Our first case focuses on the correlation between sleep exposure and total sleep time. We mainly use Kruskal-Wallis Test and multiple comparisons test and found out that sleep exposure does significantly correlate with total sleep time. In our second case, we are trying to predict the total sleep time based on brain weight, max life span, and predation index. Using multiple regression models and checking assumptions, we successfully fit a regression line $$y_{hat} = 15.4471 - 0.1113*x_{max_life_span} - 0.8986*x_{predation2} - 4.8357*x_{predation3} - 3.0913*x_{predation4} - 6.6951*x_{predation5}$$ to predict mammals' total sleep time.
+
+
+# Part 1: Background information
+
+The data set we want to explore collected brain weight, body weight, life span, gestation time, time sleeping, predation, and danger indices for 62 mammals. In our study, we mainly focus on brain weight, maximum life span, predation index, sleep exposure index, and total sleep.
+
+1. Brain weight is the mammals’ brain weight in g, ranging from 0.14g to 5712g with mean value 317.5. Boxplot and histogram show that this data skews to the right and have extreme outliers. However, it is normal to have outliers in this case since mammals' brain size and weight differ a lot.
+
+```{r, fig.height = 3, fig.width = 5}
+par(mfcol=c(1,2))
+summary(sleep2$brain_weight)
+boxplot(sleep2$brain_weight,main="boxplot of brain weight")
+points(x=1,y=mean(sleep2$brain_weight),col="blue")
+hist(sleep2$brain_weight)
+```
+
+2. Maximum life span is the length of time for which mammals live in years. This variable ranges from 2 years to 100 years. Both boxplot and histogram are right skewed and extreme outliers exist, indicating that this data is not normal. However, whether this distribution is normal or not is not important since we use max life span as a variable in Q|QQC case, where normality assumptions is checked via the histogram of total sleep time and qq plot of residuals.
+
+```{r, fig.height = 3, fig.width = 5}
+par(mfcol=c(1,2))
+summary(sleep2$max_life_span)
+sleep2$max_life_span<- as.numeric(sleep2$max_life_span)
+boxplot(sleep2$max_life_span,main="boxplot of max life span")
+m <- mean(sleep2$max_life_span)
+points(x=1,y=m,col="blue")
+hist(sleep2$max_life_span)
+```
+
+3. Predation index means the probability that one organism preyed and killed by another. This index is a categorical variable scores from 1 to 5, 1 represents least likely to be preyed upon and 5 means this mammal is most likely to be preyed upon.
+
+```{r, fig.height = 3, fig.width = 3}
+summary(sleep2$predation_index)
+sleep2$predation_index<- as.numeric(sleep2$predation_index)
+hist(sleep2$predation_index)
+```
+
+4. As another categorical variable, sleep exposure index also scores from 1 to 5, 1 means this mammal is least exposed and sleeps in a well-protected den. 5 means it's most exposed. 
+
+```{r, fig.height = 3, fig.width = 3}
+summary(sleep2$sleep_exposure_index)
+sleep2$sleep_exposure_index<- as.numeric(sleep2$sleep_exposure_index)
+hist(sleep2$sleep_exposure_index)
+```
+
+5. Total sleep represents the mammals’ total sleep in hours. Total sleep ranges from 2.6 hours to 19.9 hours, with mean value 10.35 hours and median 10.3 hours. The mean and median are pretty close to each other, indicating a normal distribution, without any outliers.
+
+```{r, fig.height = 3, fig.width = 5}
+par(mfcol=c(1,2))
+sleep2$total_sleep<- as.numeric(sleep2$total_sleep)
+summary(sleep2$total_sleep)
+boxplot(sleep2$total_sleep)
+points(x=1,y=mean(sleep2$total_sleep),col="blue")
+hist(sleep2$total_sleep)
+```
+
+
+# Part 2: Analysis of Case CQ
+
+## Big hypothesis
+
+Does sleep exposure significantly correlate with total sleep time?
+
+## Rationale
+
+Sleep exposure influences animals' sense of security. Essentially, we are exploring if the sense of security would correlate with total sleep time. People always have the common sense that there will be some correlation between total sleep time and the sense of security. Therefore, our analysis will give numerical evidence inference on this topic.
+
+## Brief analysis plan
+[STEP 1] : Checking four assumptions for doing an ANOVA.  
+[STEP 2] : Doing Kruskal-Wallis Test to see if it's significant.  
+[STEP 3] : Conducting multiple comparisons.  
+[STEP 4] : Calculating correlation between sleep exposure index and total sleep time.  
+
+## Project Plan with R code and results analysis
+
+[STEP 1] : Checking assumptions for doing an ANOVA
+
+Assumption 1 --- Independent among groups.
+Obviously populations with different sleep exposure index are independent from each other and there are no pairs or correlation.
+
+Assumption 2 --- Independent among subjects.
+Observation within groups are also independent, since the measurements for each mammal are in no way influenced by the measurements of other mammals.
+
+Assumption 3 --- Homogeneity.
+The p-value of Levene test is 0.09, which is larger $\alpha$, thus we fail to reject H0 and can conclude that these five groups with different sleep exposure index have equal variances. Therefore homogeneity holds.
+
+```{r}
+library(car)
+sleep2$sleep_exposure_index<- as.factor(sleep2$sleep_exposure_index)
+leveneTest(total_sleep~sleep_exposure_index,data=sleep2, center = median)
+```
+
+Assumption 4 --- Normality. 
+We have an unbalanced design with 21, 11, 4, 5 and 10 observations in each exposure group with different index. Moreover, the sample size of each group is less than 30, being small sample sizes so that we can not apply CLT. Additionally, the p-value of shapiro test with exposure index 5 being 0.00526 is smaller than 0.05, violating the normality assumption. 
+
+```{r}
+table(sleep2$sleep_exposure_index)
+par(mfrow=c(1,2),mar=c(6,6,6,3))
+
+boxplot(total_sleep ~ sleep_exposure_index,data=sleep2, main="Boxplot of total sleep time and sleep exposure level")
+(group.means <- tapply(sleep2$total_sleep, sleep2$sleep_exposure_index, mean))
+points(1:5, group.means)
+
+tapply(sleep2$total_sleep,sleep2$sleep_exposure_index, shapiro.test)
+```
+
+[STEP 2] : Doing Kruskal-Wallis Test.
+Since normality assumption is violated, we plan to use Kruskal-Wallis test. The p-value is 3.414e-05, which is pretty small and less than 0.05. Thus we have enough evidence to reject H0 and therefore we conclude that at least one group mean differs from another.
+
+```{r}
+kruskal.test(total_sleep ~ sleep_exposure_index, data=sleep2)
+```
+
+[STEP 3] : Conducting multiple comparisons.
+Since the p-value of Kruskal-Wallis Test is significant, we delve deeper to see where the difference in total sleep time lie. From Kurskal multiple comparison, we can see that the mean of total sleep time with index 1 and 5 and the mean of total sleep time with index 2 and 5 are significantly different, which is actually indicating that the level of exposure do associated with total sleep time. 
+
+```{r}
+library(pgirmess)
+kruskalmc(total_sleep ~ sleep_exposure_index, data=sleep2)
+```
+
+[STEP 4] : Calculating correlation between sleep exposure index and total sleep time.
+We divide mammals into "low exposure" and "high exposure" according to their sleep exposure index, and calculate the bi-serial correlation between total sleep time and exposure level. The bi-serial correlation is -0.7474052, indicating a negative and moderately strong relationship. The p-value of correlation test is 2.947115e-05, which is smaller than $\alpha$. Thus we have enough evidence to reject H0 and conclude that this Biserial correlation is significant, and can happen at the population level based on our sample.
+
+```{r}
+sleep2$sleep_exposure_index <- as.numeric(sleep2$sleep_exposure_index)
+sleep2$total_sleep <- as.numeric(sleep2$total_sleep) 
+
+sleep2$sleep_exposure_index <- cut(sleep2$sleep_exposure_index, c(-Inf, 2, Inf), c("low exposure", "high exposure"))
+sleep2$sleep_exposure_index_new <- ifelse(sleep2$sleep_exposure_index == "low exposure", 0, 1)
+
+library(polycor)
+
+polyserial(sleep2$total_sleep, sleep2$sleep_exposure_index)
+
+rb <- polyserial(sleep2$total_sleep, sleep2$sleep_exposure_index_new)
+n <- nrow(sleep2)
+tab1 <- prop.table(table(sleep2$sleep_exposure_index_new))
+p1 <- max(tab1)
+p2 <- min(tab1)
+y <- dnorm(qnorm(p1))
+sd <- sqrt(p1*p2)/(y*sqrt(n))
+z <- rb/sd
+2*pnorm(-abs(z))
+```
+
+
+# Part 3: Analysis of Case Q|QQC
+
+## Big hypothesis
+
+Can we predict the total sleep time based on brain weight, max life span, and predation index?
+
+## Ratinale
+
+Brain weight, life span and predation index are three factors that people don't usually think about when discussing sleep. We are interested that if those seemingly "not directly related" factor do associated with sleep time, or we can use them to predict sleep time.
+
+## Brief analysis plan
+[STEP 1] : Fitting a multiple regression model using forward elimination, backward selection, and stepwise selection. Choose the best model accoring to AIC values.  
+[STEP 2] : Check six assumptions.  
+[STEP 3] : check if model explains enough variability.   
+[STEP 4] : check how each predictor impacts sleep time in the presence of other variables. 
+
+## Project plan with R code and results analysis
+
+[STEP 1] : Fitting a multiple regression model. 
+
+AIC for forward elimination and stepwise selection are both 283.14995, whereas AIC is 299.6893 for backward selection. Forward elimination and stepwise selection both reached the same model, and this model had a lower AIC than the model from backward selection. Based on this, the preferred model for total sleep time is based on max_life_span and predation_index.
+
+The model is $$y_hat = 15.4471 - 0.1113*x_{max_life_span} - 0.8986*x_{predation2} - 4.8357*x_{predation3} - 3.0913*x_{predation4} - 6.6951*x_{predation5}$$
+
+```{r}
+library(olsrr)
+sleep2$max_life_span <- as.numeric(sleep2$max_life_span)
+sleep2$predation_index <- as.factor(sleep2$predation_index)
+lm_full <- lm(total_sleep ~ brain_weight + max_life_span + predation_index, data=sleep2)
+
+ols_step_forward_aic(lm_full, details=FALSE)
+forward <- lm(total_sleep ~ max_life_span + predation_index, data=sleep2)
+AIC(forward)
+
+ols_step_backward_aic(lm_full, details=FALSE)
+backward <- lm(total_sleep ~ brain_weight, data=sleep2)
+AIC(backward)
+
+ols_step_both_aic(lm_full, details=FALSE)
+both <- lm(total_sleep ~ max_life_span + predation_index, data=sleep2)
+AIC(both)
+```
+
+[STEP 2] : Check assumptions
+
+Assumption 1 --- Independent errors.
+From he index plot of the residuals, we see random scatter about the y = 0 line, and there are almost the same observations above and below the y=0 line. We also use Durbin Watson Test to check Autocorrelation. The p-value for the Durbin Watson is 0.056, which is larger than 0.05. Thus p > 0.05 and we conclude that the errors are not auto-correlated. Thus independence assumption is not violated.
+
+```{r}
+par(mar=c(9,9,9,9))
+plot(rstandard(forward), type="b")
+abline(h=0)
+```
+
+Assumption 2 --- Linearity.
+Since predation index is a categorical variable, the plot for predation index isn't too meaningful. In another plot regarding max life span, we generally see random scatter. According to the resdual fitted plot, we notice that there is no obvious pattern and the red line is approximately horizontal about y = 0, suggesting that we can assume linear relationship.
+
+```{r}
+par(mfrow=c(2,2),mar=c(5,5,5,5))
+plot(sleep2$max_life_span,rstandard(forward))
+abline(h=0)
+plot(sleep2$predation_index,rstandard(forward))
+abline(h=0)
+plot(forward, 1)
+```
+
+assumption 3 --- Homoscedacity.
+In examination of the residual(or standardized residuals) versus fitted plots, we see the red line should be approximately horizontal at zero. Moreover, the p-value of Breusch-Pagan test is 0.05088, which is greater than 0.05. Overall, the constant variance assumption seems reasonable.
+
+assumption 4 --- Normality.
+In qq plot, almost all points are on the diagonal line. The distribution of total sleep time approximately follows normal distribution. Moreover, the p-value of shapiro test for residuals being 0.4554 is greater than 0.05. All in all, normality assumption is met.
+
+```{r}
+par(mfrow=c(2,2))
+plot(forward, 2)
+sleep2$total_sleep <- as.numeric(sleep2$total_sleep)
+hist(sleep2$total_sleep)
+resid1 <- resid(forward)
+shapiro.test(resid1)
+```
+
+Assumption 5 --- Multicollinearity.
+Since predation index is a functionally categorical data, and is not continuous, the scatter plots are not meaningful to explore. Instead, we see that the VIF values are all below 10, thus we can conclude that max life span and predation index are relatively unrelated.
+
+```{r}
+library(car)
+vif(forward)
+```
+
+Assumption 6 --- y variable to be quantitative.
+Assumption holds since the outcome variable: total sleep time is a quantitative variable.
+
+
+[STEP 3] : check if model explains enough variability
+
+The p-value of overall F test is 4.043e-06, which is smaller than 0.05. Therefore, we reject the null hypothesis, and have sufficient evidence to conclude that at least one $beta_j$ does not equal to 0, and the regression is significant.
+
+The adjusted R^2 being 0.4064 indicates that 40.64% of the variability in total sleep time is explained by the linear relationship with max life span and predation index. We think it is enough since obviously sleep time related to many other factors.
+
+```{r}
+summary(forward)
+```
+
+[STEP 4] : check how each predictor impacts sleep time in the presence of other variables
+
+The t-tests on $beta_0$, $beta_{max_life_span}$, and $beta_{predation}$ from index 2 to 5 are 7.51e-15, 0.000301, 0.558564, 0.006374, 0.083306 and 7.51e-05 respectively. All predictors, except $beta_{predation2}$ and $beta_{predation4}$, are significant.
+
+Inter the model $$y_{hat} = 15.4471 - 0.1113*x_{max_life_span} - 0.8986*x_{predation2} - 4.8357*x_{predation3} - 3.0913*x_{predation4} - 6.6951*x_{predation5}$$:   
+
+For 1 year increase in max life span, we expect the total sleep time to decrease by 0.1113 hours, holding predation index constant. 
+
+---> When$x_{predation2}$ = $x_{predation3}$ = $x_{predation4}$ = $x_{predation5}$ = 0
+For animals with predation index 1 (least likely to be preyed upon), who has 0 years life span, we expect their total sleep time to be 15.4471 hours. 
+
+---> when$x_{predation2}$=1, and $x_{predation3}$ = $x_{predation4}$ = $x_{predation5}$ = 0
+For animals with predation index 2, who has 0 years life span, we expect their total sleep time to be 14.5485 hours. 
+
+---> when$x_{predation3}$=1, and $x_{predation2}$ = $x_{predation4}$ = $x_{predation5}$ = 0
+For animals with predation index 3, who has 0 years life span, we expect their total sleep time to be 10.6214 hours. 
+
+---> when$x_{predation4}$=1, and $x_{predation2}$ = $x_{predation3}$ = $x_{predation5}$ = 0
+For animals with predation index 4, who has 0 years life span, we expect their total sleep time to be 12.3558 hours. 
+
+---> when$x_{predation5}$=1, and $x_{predation2}$ = $x_{predation3}$ = $x_{predation4}$ = 0
+For animals with predation index 5, who has 0 years life span, we expect their total sleep time to be 8.752 hours. 
+
+
+# Part 4: summarization
+In the first analysis, we can conclude that sleep exposure significantly correlate with total sleep time. In the second analysis, we draw the conclusion that we can use the model $$y_{hat} = 15.4471 - 0.1113*x_{max_life_span} - 0.8986*x_{predation2} - 4.8357*x_{predation3} - 3.0913*x_{predation4} - 6.6951*x_{predation5}$$ to predict total sleep time.
