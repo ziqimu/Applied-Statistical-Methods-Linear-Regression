@@ -44,8 +44,8 @@ Access data from Kaggle:
 
 ### 1. Case CQ
 For the CQ (categorical and quantitative) case analysis,  we are exploring if the sense of security would
-correlate with total sleep time. We divide mammals into “low exposure” and “high exposure” according to their sleep exposure index, and calculate the bi-serial correlation between total sleep time and exposure level. The bi-serial correlation is -0.7474052, indicating a
-negative and moderately strong relationship. The p-value of the correlation test is 2.947115e-05, which is smaller
+correlate with total sleep time. We divide mammals into “low exposure” and “high exposure” according to their sleep exposure index, and calculate the bi-serial correlation between total sleep time and exposure level. The bi-serial correlation is **-0.7474052**, indicating a
+negative and moderately strong relationship. The p-value of the correlation test is **2.947115e-05**, which is smaller
 than α. Thus we have enough evidence to reject H0 and conclude that this Biserial correlation is significant,
 and can happen at the population level based on our sample.
 
